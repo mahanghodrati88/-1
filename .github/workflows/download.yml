@@ -1,0 +1,53 @@
+name: دانلود دستی ویدئوی یوتیوب
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'لینک ویدئوی یوتیوب'
+        required: true
+        type: string
+      format:
+        description: 'فرمت ویدئو'
+        required: true
+        type: choice
+        options:
+        - mp4
+        - webm
+      quality:
+        description: 'کیفیت ویدئو'
+        required: true
+        type: choice
+        options:
+        - 2160p
+        - 1080p
+        - 720p
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - name: دریافت کد مخزن
+        uses: actions/checkout@v4
+
+      - name: نصب yt-dlp
+        uses: AnimMouse/setup-yt-dlp@v3
+
+      - name: نصب FFmpeg (برای ادغام ویدئو و صدا)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: دانلود ویدئو
+        run: |
+          # ساخت رشته فرمت بر اساس انتخاب‌های کاربر
+          FORMAT_STRING="bestvideo[height<=${{ github.event.inputs.quality }}][ext=${{ github.event.inputs.format }}]+bestaudio[ext=m4a]/best[height<=${{ github.event.inputs.quality }}]"
+          
+          # اجرای دستور دانلود، خروجی با نام 'downloaded_video.فرمت' ذخیره می‌شود
+          yt-dlp -f "$FORMAT_STRING" -o "downloaded_video.%(ext)s" "${{ github.event.inputs.url }}"
+
+      - name: بارگذاری خروجی (Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: downloaded-video
+          path: downloaded_video.${{ github.event.inputs.format }}
